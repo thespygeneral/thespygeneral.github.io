@@ -2,6 +2,7 @@
 // If the journal has a passcode, the backup is encrypted too and opens with the same passcode or recovery code.
 
 import { toB64, fromB64, sealJson, openJson, unwrapDataKey, normalizeRecoveryCode } from "./crypto";
+import { normalizeLists } from "./types";
 import {
   exportAll,
   replaceAll,
@@ -105,7 +106,7 @@ export async function restoreBackup(file: BackupFile, secret?: string): Promise<
   await replaceAll(
     {
       trades: payload.trades ?? [],
-      lists: payload.lists ?? { strategies: [], accounts: [] },
+      lists: normalizeLists(payload.lists),
       settings: payload.settings,
       images: (payload.images ?? []).map(({ b64, ...rest }) => ({ ...rest, bytes: fromB64(b64).buffer })),
     },

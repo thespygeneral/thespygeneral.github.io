@@ -18,6 +18,21 @@ function Tip({ active, label, payload, labelFmt }: { active?: boolean; label?: s
   );
 }
 
+/** Round-number axis that always includes $0, e.g. -900, -600, -300, 0, 300. */
+export function niceScale(values: number[]): { lo: number; hi: number; ticks: number[] } {
+  const lo0 = Math.min(0, ...values);
+  const hi0 = Math.max(0, ...values);
+  if (lo0 === hi0) return { lo: 0, hi: 1, ticks: [0, 1] };
+  const raw = (hi0 - lo0) / 4;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw) ?? 10 * mag;
+  const lo = Math.floor(lo0 / step) * step;
+  const hi = Math.ceil(hi0 / step) * step;
+  const ticks: number[] = [];
+  for (let v = lo; v <= hi + step / 1e6; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+  return { lo, hi, ticks };
+}
+
 const Empty = ({ h, text }: { h: number; text: string }) => (
   <div className="flex items-center justify-center text-sm text-text-muted" style={{ height: h }}>{text}</div>
 );
@@ -27,6 +42,7 @@ const dayLabel = (d: string) => parseLocal(d).toLocaleDateString("en-US", { mont
 export function EquityChart({ data }: { data: EquityPoint[] }) {
   if (!data.length) return <Empty h={260} text="Close a trade and your account growth line appears here." />;
   const last = data[data.length - 1].cumPnl;
+  const scale = niceScale(data.map((d) => d.cumPnl));
   const color = last >= 0 ? "var(--good)" : "var(--critical)";
   return (
     <ResponsiveContainer key={String(numbersHidden())} width="100%" height={260}>
@@ -39,7 +55,7 @@ export function EquityChart({ data }: { data: EquityPoint[] }) {
         </defs>
         <CartesianGrid stroke="var(--border-strong)" vertical={false} />
         <XAxis dataKey="date" tick={axis} tickLine={false} axisLine={{ stroke: "var(--border-strong)" }} minTickGap={40} tickFormatter={(d) => parseLocal(d).toLocaleDateString("en-US", { month: "short", day: "numeric" })} />
-        <YAxis tick={axis} tickLine={false} axisLine={false} width={56} tickFormatter={short} />
+        <YAxis tick={axis} tickLine={false} axisLine={false} width={64} tickFormatter={short} domain={[scale.lo, scale.hi]} ticks={scale.ticks} interval={0} />
         <Tooltip content={<Tip labelFmt={dayLabel} />} cursor={{ stroke: "var(--border-strong)" }} />
         <Area type="monotone" dataKey="cumPnl" stroke={color} strokeWidth={2} fill="url(#eq)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
       </AreaChart>
@@ -49,12 +65,23 @@ export function EquityChart({ data }: { data: EquityPoint[] }) {
 
 export function BucketChart({ data, height = 220 }: { data: Bucket[]; height?: number }) {
   if (!data.length) return <Empty h={height} text="No closed trades yet." />;
+  const scale = niceScale(data.map((d) => d.pnl));
   return (
     <ResponsiveContainer key={String(numbersHidden())} width="100%" height={height}>
       <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--border-strong)" vertical={false} />
         <XAxis dataKey="key" tick={axis} tickLine={false} axisLine={{ stroke: "var(--border-strong)" }} interval={0} />
-        <YAxis tick={axis} tickLine={false} axisLine={false} width={52} tickFormatter={short} />
+        <YAxis
+          tick={axis}
+          tickLine={false}
+          axisLine={false}
+          width={64}
+          tickFormatter={short}
+          // Always include $0 (bars grow up for wins, down for losses) with round-number steps.
+          domain={[scale.lo, scale.hi]}
+          ticks={scale.ticks}
+          interval={0}
+        />
         <Tooltip content={<Tip />} cursor={{ fill: "var(--surface-2)" }} />
         <Bar dataKey="pnl" radius={[4, 4, 4, 4]} maxBarSize={36}>
           {data.map((d, i) => <Cell key={i} fill={d.pnl >= 0 ? "var(--good)" : "var(--critical)"} />)}

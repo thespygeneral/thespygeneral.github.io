@@ -16,7 +16,7 @@ const PRESETS = [
   { key: "year", label: "This year", range: () => [f(startOfYear(new Date())), ""] },
 ];
 
-export type FilterState = { from: string; to: string; type: AssetClass | ""; account: string; symbol: string; status: string; strategy: string; tag: string };
+export type FilterState = { from: string; to: string; type: AssetClass | ""; account: string; symbol: string; status: string; strategy: string; tag: string; mistake: string };
 
 export function useFilters() {
   const [sp, setSp] = useSearchParams();
@@ -29,6 +29,7 @@ export function useFilters() {
     status: sp.get("status") ?? "",
     strategy: sp.get("strategy") ?? "",
     tag: sp.get("tag") ?? "",
+    mistake: sp.get("mistake") ?? "",
   };
   const set = (patch: Partial<FilterState>) => {
     const next = new URLSearchParams(sp);
@@ -49,6 +50,7 @@ export function useFilters() {
       if (state.status && r.s.status !== state.status) return false;
       if (state.strategy && r.trade.strategy !== state.strategy) return false;
       if (state.tag && !r.trade.tags.includes(state.tag)) return false;
+      if (state.mistake && !(r.trade.mistakes ?? []).includes(state.mistake)) return false;
       return true;
     });
   const active = Object.values(state).some(Boolean);
@@ -63,6 +65,7 @@ export function FilterBar({ filters, more }: { filters: ReturnType<typeof useFil
     return a === state.from && b === state.to;
   });
   const tags = [...new Set(trades.flatMap((t) => t.tags))].sort();
+  const mistakes = [...new Set(trades.flatMap((t) => t.mistakes ?? []))].sort();
   const sel = cn(inputClass, "w-auto py-1.5 text-xs");
 
   return (
@@ -109,6 +112,12 @@ export function FilterBar({ filters, more }: { filters: ReturnType<typeof useFil
             <select aria-label="Strategy" value={state.strategy} onChange={(e) => set({ strategy: e.target.value })} className={sel}>
               <option value="">All strategies</option>
               {lists.strategies.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          )}
+          {mistakes.length > 0 && (
+            <select aria-label="Mistake" value={state.mistake} onChange={(e) => set({ mistake: e.target.value })} className={sel}>
+              <option value="">Any mistake</option>
+              {mistakes.map((s) => <option key={s}>{s}</option>)}
             </select>
           )}
           {tags.length > 0 && (

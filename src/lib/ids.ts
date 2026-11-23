@@ -24,6 +24,7 @@ export function blankTrade(assetClass: AssetClass, side: Side = "LONG"): Trade {
     strategy: "",
     tags: [],
     grade: "",
+    mistakes: [],
     notes: "",
     screenshotIds: [],
     createdAt: now,

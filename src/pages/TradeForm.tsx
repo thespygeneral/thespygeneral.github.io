@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router";
-import { Plus, X, Upload, Loader2, TrendingUp, Layers, BarChart3, ArrowLeft, ImagePlus } from "lucide-react";
+import { Plus, X, Upload, Loader2, TrendingUp, Layers, BarChart3, ArrowLeft, ImagePlus, OctagonAlert } from "lucide-react";
 import { useJournal, useImageUrl } from "../lib/journal";
 import { blankTrade, newId } from "../lib/ids";
-import { summarize, QTY_LABEL, contractLabel } from "../lib/calc";
+import { summarize, QTY_LABEL, contractLabel, dailyPnl, dayLimitStatus, type TradeRow } from "../lib/calc";
 import { FUTURES, findFuture } from "../lib/futures";
 import { prepareScreenshot } from "../lib/images";
-import { cn, nowLocal, signedMoney, num, price as fmtPrice } from "../lib/format";
-import type { AssetClass, Fill, Trade } from "../lib/types";
-import { Button, Card, Field, Input, NumberInput, PageHeader, Segmented, Select, inputClass } from "../components/ui";
+import { cn, nowLocal, todayLocal, money, signedMoney, num, price as fmtPrice } from "../lib/format";
+import { PRESET_MISTAKES, type AssetClass, type Fill, type Lists, type Trade } from "../lib/types";
+import { Button, Card, Field, Input, Notice, NumberInput, PageHeader, Segmented, Select, inputClass } from "../components/ui";
 
 const TYPES: { value: AssetClass; title: string; text: string; icon: typeof TrendingUp }[] = [
   { value: "EQUITY", title: "Stock", text: "Shares and ETFs", icon: TrendingUp },
@@ -30,7 +30,7 @@ type NewImage = { id: string; blob: Blob; url: string };
 
 export function TradeForm() {
   const { id } = useParams();
-  const { trades, lists, saveTrade } = useJournal();
+  const { trades, rows, lists, settings, saveTrade } = useJournal();
   const nav = useNavigate();
   const existing = id ? trades.find((t) => t.id === id) : undefined;
 
@@ -57,6 +57,9 @@ export function TradeForm() {
     return (
       <>
         <PageHeader title="Log a Trade" sub="What did you trade?" />
+        <div className="mx-auto max-w-3xl px-4 pt-5 md:px-8 [&:empty]:hidden">
+          <LimitWarning rows={rows} lossLimit={settings.dailyLossLimit} />
+        </div>
         <div className="mx-auto grid max-w-3xl grid-cols-1 gap-3 px-4 py-8 sm:grid-cols-3 md:px-8">
           {TYPES.map(({ value, title, text, icon: Icon }) => (
             <button
@@ -118,6 +121,7 @@ export function TradeForm() {
         )}
       />
       <div className="mx-auto max-w-3xl space-y-5 px-4 py-5 md:px-8">
+        {!existing && <LimitWarning rows={rows} lossLimit={settings.dailyLossLimit} />}
         <Card title="What you traded">
           <InstrumentFields t={t} update={update} errors={errors} />
         </Card>
@@ -389,7 +393,7 @@ function ResultPreview({ t }: { t: Trade }) {
 
 // ---------------- Details ----------------
 
-function DetailFields({ t, update, lists }: { t: Trade; update: (p: Partial<Trade>) => void; lists: { strategies: string[]; accounts: string[] } }) {
+function DetailFields({ t, update, lists }: { t: Trade; update: (p: Partial<Trade>) => void; lists: Lists }) {
   const [tag, setTag] = useState("");
   const addTag = () => {
     const v = tag.trim().replace(/,$/, "");
@@ -419,6 +423,9 @@ function DetailFields({ t, update, lists }: { t: Trade; update: (p: Partial<Trad
         <Input list="accounts" placeholder="e.g. Main, IRA, Prop firm" value={t.account} onChange={(e) => update({ account: e.target.value })} />
         <datalist id="accounts">{lists.accounts.map((s) => <option key={s} value={s} />)}</datalist>
       </Field>
+      <Field group label="Mistakes on this trade" className="sm:col-span-2" hint="Tap any that apply. Your Dashboard shows what each one costs you.">
+        <MistakePicker value={t.mistakes} custom={lists.mistakes} onChange={(mistakes) => update({ mistakes })} />
+      </Field>
       <Field group label="Tags" className="sm:col-span-2" hint="Press Enter after each one.">
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border-strong bg-surface-0 px-2 py-1.5">
           {t.tags.map((x) => (
@@ -444,6 +451,74 @@ function DetailFields({ t, update, lists }: { t: Trade; update: (p: Partial<Trad
       <Field label="Notes" className="sm:col-span-2">
         <textarea rows={5} value={t.notes} onChange={(e) => update({ notes: e.target.value })} placeholder="Why you took it, how you felt, what you'd do differently…" className={cn(inputClass, "resize-y")} />
       </Field>
+    </div>
+  );
+}
+
+// ---------------- Daily loss limit reminder (only if the member set one) ----------------
+
+function LimitWarning({ rows, lossLimit }: { rows: TradeRow[]; lossLimit: number | null }) {
+  const pnl = dailyPnl(rows).get(todayLocal())?.pnl ?? 0;
+  const lim = dayLimitStatus(pnl, lossLimit, null);
+  if (lim.state !== "limit-hit") return null;
+  return (
+    <Notice tone="bad" icon={<OctagonAlert size={16} />}>
+      <b className="text-critical-text">You hit your daily loss limit</b> ({signedMoney(pnl)} today, limit {money(lossLimit ?? 0)}). Your rule says stop trading for today.
+    </Notice>
+  );
+}
+
+// ---------------- Mistakes ----------------
+
+function MistakePicker({ value, custom, onChange }: { value: string[]; custom: string[]; onChange: (v: string[]) => void }) {
+  const [adding, setAdding] = useState(false);
+  const [text, setText] = useState("");
+  const all = [...PRESET_MISTAKES, ...custom.filter((c) => !PRESET_MISTAKES.includes(c)), ...value.filter((v) => !PRESET_MISTAKES.includes(v) && !custom.includes(v))];
+  const toggle = (m: string) => onChange(value.includes(m) ? value.filter((x) => x !== m) : [...value, m]);
+  const add = () => {
+    const v = text.trim();
+    if (v && !value.includes(v)) onChange([...value, v]);
+    setText("");
+    setAdding(false);
+  };
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {all.map((m) => {
+        const on = value.includes(m);
+        return (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={on}
+            onClick={() => toggle(m)}
+            className={cn(
+              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+              on ? "border-critical/50 bg-critical/20 text-critical-text" : "border-border-strong text-text-secondary hover:bg-surface-2 hover:text-text-primary"
+            )}
+          >
+            {m}
+          </button>
+        );
+      })}
+      {adding ? (
+        <input
+          autoFocus
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); add(); }
+            if (e.key === "Escape") setAdding(false);
+          }}
+          onBlur={add}
+          placeholder="Your own mistake"
+          aria-label="Add your own mistake"
+          className="rounded-full border border-border-strong bg-surface-0 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent/50"
+        />
+      ) : (
+        <button type="button" onClick={() => setAdding(true)} className="flex items-center gap-1 rounded-full border border-dashed border-border-strong px-3 py-1.5 text-xs text-text-muted hover:text-text-primary">
+          <Plus size={12} /> Add your own
+        </button>
+      )}
     </div>
   );
 }

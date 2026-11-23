@@ -30,7 +30,7 @@ export function buildWorkbook(list: TradeRow[]) {
     "Opened", "Closed", "Type", "Symbol", "Contract", "Side", "Quantity", "Avg Entry", "Avg Exit", "Fees",
     "Net P&L", "Return %", "R-Multiple", "Points", "Ticks", "Status", "Stop Loss", "Target",
     "Option Type", "Strike", "Expiration", "Multiplier", "Futures Month", "Point Value",
-    "Account", "Strategy", "Tags", "Grade", "Notes",
+    "Account", "Strategy", "Tags", "Mistakes", "Grade", "Notes",
   ];
   const trades: SheetData = [
     tradeCols.map(head),
@@ -62,6 +62,7 @@ export function buildWorkbook(list: TradeRow[]) {
       text(t.account),
       text(t.strategy),
       text(t.tags.join(", ")),
+      text((t.mistakes ?? []).join(", ")),
       text(t.grade),
       text(t.notes),
     ]),

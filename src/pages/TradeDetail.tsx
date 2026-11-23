@@ -5,6 +5,7 @@ import { useJournal, useImageUrl } from "../lib/journal";
 import { summarize, contractLabel, sideLabel, ASSET_LABEL, QTY_UNIT } from "../lib/calc";
 import { dateLabel, holdLabel, money, price, qty, num } from "../lib/format";
 import { Badge, Button, Card, Modal, PageHeader, Pnl } from "../components/ui";
+import { ShareTradeButton } from "../components/Share";
 import type { Fill } from "../lib/types";
 
 export function TradeDetail() {
@@ -62,6 +63,7 @@ export function TradeDetail() {
         action={
           <>
             <Link to={`/trades/${t.id}/edit`}><Button variant="primary"><Pencil size={14} /> {s.status === "OPEN" ? "Edit or close" : "Edit"}</Button></Link>
+            <ShareTradeButton trade={t} />
             <Button variant="ghost" onClick={() => setConfirm(true)}><Trash2 size={14} /> Delete</Button>
           </>
         }
@@ -81,6 +83,12 @@ export function TradeDetail() {
             ))}
           </dl>
           {t.tags.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{t.tags.map((x) => <Badge key={x}>{x}</Badge>)}</div>}
+          {t.mistakes.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-text-muted">Mistakes:</span>
+              {t.mistakes.map((x) => <Badge key={x} tone="bad">{x}</Badge>)}
+            </div>
+          )}
         </Card>
 
         <Card title="Fills">

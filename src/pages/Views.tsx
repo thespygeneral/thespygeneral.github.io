@@ -4,12 +4,14 @@ import { Plus, FileSpreadsheet, Loader2, ChevronLeft, ChevronRight, NotebookPen 
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, format, addMonths } from "date-fns";
 import { useJournal } from "../lib/journal";
 import { computeStats, equityCurve, pnlByAsset, pnlBySymbol, pnlByStrategy, pnlByWeekday, pnlByTag, dailyPnl, type TradeRow } from "../lib/calc";
-import { cn, money, signedMoney, num, todayLocal } from "../lib/format";
-import { Button, Card, Empty, PageHeader, Pnl, StatCard } from "../components/ui";
+import { cn, money, signedMoney, num } from "../lib/format";
+import { Button, Card, Empty, PageHeader, StatCard } from "../components/ui";
 import { EquityChart, BucketChart, WinDonut } from "../components/Charts";
 import { TradesTable } from "../components/TradesTable";
 import { FilterBar, useFilters } from "../components/Filters";
 import { downloadExcel } from "../lib/excel";
+import { TodayCard, MistakesCard, TimeOfDayCard } from "../components/Insights";
+import { ShareResultsButton } from "../components/Share";
 
 function NoTradesYet() {
   return (
@@ -44,42 +46,6 @@ export function ExcelButton({ rows, label = "Export to Excel" }: { rows: TradeRo
   );
 }
 
-/** Today at a glance — always today, whatever date filter is picked below. */
-function TodayCard({ rows }: { rows: TradeRow[] }) {
-  const today = todayLocal();
-  const taken = rows.filter((r) => r.trade.entries.some((f) => f.date.slice(0, 10) === today));
-  const stillOpen = taken.filter((r) => r.s.status === "OPEN").length;
-  const closed = dailyPnl(rows).get(today);
-  const label = new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
-  return (
-    <Link
-      to={`/trades?from=${today}&to=${today}`}
-      className="flex flex-col gap-4 rounded-xl border border-accent/30 bg-accent/5 px-4 py-4 transition-colors hover:bg-accent/10 sm:flex-row sm:items-center sm:justify-between md:px-5"
-    >
-      <div>
-        <div className="text-xs font-medium uppercase tracking-wide text-accent">Today · {label}</div>
-        <div className="mt-1 text-2xl font-semibold">
-          {taken.length} trade{taken.length === 1 ? "" : "s"} taken
-        </div>
-      </div>
-      <div className="flex gap-8 text-sm">
-        <div>
-          <div className="text-xs text-text-muted">Closed today</div>
-          <div className="mt-0.5 font-semibold">{closed?.trades ?? 0}</div>
-        </div>
-        <div>
-          <div className="text-xs text-text-muted">Still open</div>
-          <div className="mt-0.5 font-semibold">{stillOpen}</div>
-        </div>
-        <div>
-          <div className="text-xs text-text-muted">Today's P&L</div>
-          <div className="mt-0.5"><Pnl value={closed ? closed.pnl : null} /></div>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
 export function Dashboard() {
   const { rows } = useJournal();
   const filters = useFilters();
@@ -91,13 +57,13 @@ export function Dashboard() {
 
   return (
     <>
-      <PageHeader title="Dashboard" sub="How your trading is going." action={<ExcelButton rows={list} />} />
+      <PageHeader title="Dashboard" sub="How your trading is going." action={<><ShareResultsButton rows={rows} /><ExcelButton rows={list} /></>} />
       <div className="space-y-5 px-4 py-5 md:px-8">
         <TodayCard rows={rows} />
         <FilterBar filters={filters} />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <StatCard label="Net P&L" value={signedMoney(st.totalPnl)} tone={st.totalPnl > 0 ? "good" : st.totalPnl < 0 ? "bad" : undefined} sub={`${st.closed} closed · ${st.open} open`} />
-          <StatCard label="Win rate" value={num(`${st.winRate.toFixed(1)}%`)} sub={`${st.wins} wins · ${st.losses} losses`} />
+          <StatCard label="Win rate" value={num(`${st.winRate.toFixed(1)}%`)} sub={`${st.wins} win${st.wins === 1 ? "" : "s"} · ${st.losses} loss${st.losses === 1 ? "" : "es"}`} />
           <StatCard label="Avg win / Avg loss" value={money(st.avgWin)} sub={`${money(-st.avgLoss)} avg loss`} />
           <StatCard label="Profit factor" value={pf} sub="Money won ÷ money lost" />
           <StatCard label="Avg per trade" value={signedMoney(st.expectancy)} tone={st.expectancy > 0 ? "good" : st.expectancy < 0 ? "bad" : undefined} />
@@ -120,6 +86,10 @@ export function Dashboard() {
           <Card title="By day of week"><BucketChart data={pnlByWeekday(list)} /></Card>
           {list.some((r) => r.trade.strategy) && <Card title="By strategy"><BucketChart data={pnlByStrategy(list)} /></Card>}
           {list.some((r) => r.trade.tags.length) && <Card title="By tag"><BucketChart data={pnlByTag(list)} /></Card>}
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <TimeOfDayCard rows={list} />
+          <MistakesCard rows={list} />
         </div>
         <Card title={filters.active ? "Trades in this view" : "Latest trades"} action={<Link to="/trades" className="text-xs font-medium text-accent hover:underline">See all</Link>}>
           <TradesTable rows={filters.active ? list : [...list].sort((a, b) => (b.s.entryDate ?? "").localeCompare(a.s.entryDate ?? "")).slice(0, 8)} />

@@ -41,6 +41,8 @@ export type Trade = {
   strategy: string;
   tags: string[];
   grade: "" | "A" | "B" | "C" | "D" | "F";
+  /** Optional. Mistakes made on this trade (e.g. "FOMO"). Older trades may not have it — see normalizeTrade. */
+  mistakes: string[];
   notes: string;
   screenshotIds: string[];
   createdAt: string; // ISO
@@ -50,11 +52,39 @@ export type Trade = {
 export type Screenshot = { id: string; tradeId: string; blob: Blob; type: string; createdAt: string };
 
 /** Lists the member manages (kept so dropdowns remember their choices). */
-export type Lists = { strategies: string[]; accounts: string[] };
+export type Lists = { strategies: string[]; accounts: string[]; mistakes: string[] };
+
+export const EMPTY_LISTS: Lists = { strategies: [], accounts: [], mistakes: [] };
+
+/** Common mistakes offered as one-tap choices. Members can add their own. */
+export const PRESET_MISTAKES = [
+  "FOMO",
+  "Chased entry",
+  "No stop",
+  "Moved my stop",
+  "Oversized",
+  "Revenge trade",
+  "Overtraded",
+  "Held a loser too long",
+  "Cut a winner early",
+  "Broke my rules",
+];
 
 export type Settings = {
   autoLockMinutes: number; // 0 = never (only applies when a passcode is set)
   backupReminderDays: number;
+  /** Optional daily limits, in dollars (positive numbers). null = not set. */
+  dailyLossLimit: number | null;
+  dailyProfitGoal: number | null;
 };
 
-export const DEFAULT_SETTINGS: Settings = { autoLockMinutes: 15, backupReminderDays: 7 };
+export const DEFAULT_SETTINGS: Settings = { autoLockMinutes: 15, backupReminderDays: 7, dailyLossLimit: null, dailyProfitGoal: null };
+
+/** Fills in anything an older saved trade is missing, so every screen can rely on the full shape. */
+export function normalizeTrade(t: Trade): Trade {
+  return { ...t, mistakes: Array.isArray(t.mistakes) ? t.mistakes : [], tags: Array.isArray(t.tags) ? t.tags : [] };
+}
+
+export function normalizeLists(l: Partial<Lists> | null | undefined): Lists {
+  return { strategies: l?.strategies ?? [], accounts: l?.accounts ?? [], mistakes: l?.mistakes ?? [] };
+}

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as S from "./storage";
 import { writeAutoBackup, autoBackupFileName, lastBackupAt } from "./backup";
-import { DEFAULT_SETTINGS, type Lists, type Settings, type Trade } from "./types";
+import { DEFAULT_SETTINGS, EMPTY_LISTS, PRESET_MISTAKES, type Lists, type Settings, type Trade } from "./types";
 import { rows as toRows, type TradeRow } from "./calc";
 
 type Phase = "loading" | "welcome" | "locked" | "ready" | "error";
@@ -45,7 +45,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState<string | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [lists, setLists] = useState<Lists>({ strategies: [], accounts: [] });
+  const [lists, setLists] = useState<Lists>(EMPTY_LISTS);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [passcodeOn, setPasscodeOn] = useState(false);
   const [persisted, setPersisted] = useState<boolean | null>(null);
@@ -212,8 +212,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     setLists((cur) => {
       const strategies = t.strategy && !cur.strategies.includes(t.strategy) ? [...cur.strategies, t.strategy].sort() : cur.strategies;
       const accounts = t.account && !cur.accounts.includes(t.account) ? [...cur.accounts, t.account].sort() : cur.accounts;
-      if (strategies === cur.strategies && accounts === cur.accounts) return cur;
-      const next = { strategies, accounts };
+      // Remember the member's own mistake names (presets are always offered anyway).
+      const custom = (t.mistakes ?? []).filter((m) => !PRESET_MISTAKES.includes(m) && !cur.mistakes.includes(m));
+      const mistakes = custom.length ? [...cur.mistakes, ...custom] : cur.mistakes;
+      if (strategies === cur.strategies && accounts === cur.accounts && mistakes === cur.mistakes) return cur;
+      const next = { strategies, accounts, mistakes };
       S.saveLists(next);
       return next;
     });

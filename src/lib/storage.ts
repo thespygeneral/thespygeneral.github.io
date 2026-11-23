@@ -15,7 +15,7 @@ import {
   type WrappedKey,
   type Sealed,
 } from "./crypto";
-import { DEFAULT_SETTINGS, type Lists, type Settings, type Trade } from "./types";
+import { DEFAULT_SETTINGS, normalizeLists, normalizeTrade, type Lists, type Settings, type Trade } from "./types";
 
 const DB_NAME = "trade-journal";
 
@@ -120,10 +120,10 @@ export async function loadJournal(): Promise<Journal> {
   await requireOpen();
   const d = await db();
   const stored = await d.getAll("trades");
-  const trades = await Promise.all(stored.map((s) => unseal<Trade>(s)));
+  const trades = (await Promise.all(stored.map((s) => unseal<Trade>(s)))).map(normalizeTrade);
   const listsRec = await d.get("kv", "lists");
   const settingsRec = await d.get("kv", "settings");
-  const lists = listsRec ? await unseal<Lists>(listsRec) : { strategies: [], accounts: [] };
+  const lists = normalizeLists(listsRec ? await unseal<Partial<Lists>>(listsRec) : null);
   const settings = settingsRec ? { ...DEFAULT_SETTINGS, ...(await unseal<Settings>(settingsRec)) } : DEFAULT_SETTINGS;
   return { trades, lists, settings };
 }
