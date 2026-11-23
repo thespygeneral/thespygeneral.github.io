@@ -25,4 +25,6 @@ git commit -q -m "Publish $(date '+%Y-%m-%d %H:%M')"
 git push -q -f https://github.com/thespygeneral/thespygeneral.github.io.git gh-pages
 cd - >/dev/null
 rm -rf "$TMP"
+# Make sure GitHub rebuilds from the new files right away.
+gh api -X POST repos/thespygeneral/thespygeneral.github.io/pages/builds >/dev/null 2>&1 || true
 echo "Published. Live in about a minute at https://thespygeneral.github.io"
