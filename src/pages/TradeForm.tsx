@@ -6,7 +6,7 @@ import { blankTrade, newId } from "../lib/ids";
 import { summarize, QTY_LABEL, contractLabel } from "../lib/calc";
 import { FUTURES, findFuture } from "../lib/futures";
 import { prepareScreenshot } from "../lib/images";
-import { cn, nowLocal, signedMoney, price as fmtPrice } from "../lib/format";
+import { cn, nowLocal, signedMoney, num, price as fmtPrice } from "../lib/format";
 import type { AssetClass, Fill, Trade } from "../lib/types";
 import { Button, Card, Field, Input, NumberInput, PageHeader, Segmented, Select, inputClass } from "../components/ui";
 
@@ -364,9 +364,9 @@ function ResultPreview({ t }: { t: Trade }) {
     ["Status", s.status === "OPEN" ? (s.exitQty ? `Open (${s.openQty} left)` : "Still open") : "Closed"],
   ];
   if (s.avgExit !== null) items.push(["Average exit", fmtPrice(s.avgExit)]);
-  if (t.assetClass === "FUTURE" && s.pointsPerUnit !== null) items.push(["Points", `${s.pointsPerUnit > 0 ? "+" : ""}${Math.round(s.pointsPerUnit * 10000) / 10000}${s.ticks !== null ? ` (${s.ticks} ticks)` : ""}`]);
-  if (s.returnPct !== null) items.push(["Return", `${s.returnPct > 0 ? "+" : ""}${s.returnPct}%`]);
-  if (s.rMultiple !== null) items.push(["R-multiple", `${s.rMultiple}R`]);
+  if (t.assetClass === "FUTURE" && s.pointsPerUnit !== null) items.push(["Points", num(`${s.pointsPerUnit > 0 ? "+" : ""}${Math.round(s.pointsPerUnit * 10000) / 10000}${s.ticks !== null ? ` (${s.ticks} ticks)` : ""}`)]);
+  if (s.returnPct !== null) items.push(["Return", num(`${s.returnPct > 0 ? "+" : ""}${s.returnPct}%`)]);
+  if (s.rMultiple !== null) items.push(["R-multiple", num(`${s.rMultiple}R`)]);
   return (
     <div className="mt-5 rounded-xl border border-border-strong bg-surface-2 p-4">
       <div className="flex items-baseline justify-between gap-3">

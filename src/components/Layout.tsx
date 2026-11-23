@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation, Link } from "react-router";
-import { LayoutDashboard, CalendarDays, ListOrdered, Plus, ShieldCheck, Lock, HardDriveDownload, KeyRound } from "lucide-react";
+import { LayoutDashboard, CalendarDays, ListOrdered, Plus, ShieldCheck, Lock, HardDriveDownload, KeyRound, Eye, EyeOff } from "lucide-react";
+import { useHide } from "../lib/hide";
 import { useEffect, useState } from "react";
 import { APP_NAME, COMMUNITY_NAME } from "../config";
 import { useJournal } from "../lib/journal";
@@ -23,9 +24,10 @@ export function Layout() {
     <div className="flex min-h-dvh">
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border-strong bg-surface-1 px-4 py-5 md:flex">
         <Brand />
-        <Link to="/trades/new" className="mb-6 flex items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2.5 text-sm font-semibold text-black hover:bg-accent/90">
+        <Link to="/trades/new" className="flex items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2.5 text-sm font-semibold text-black hover:bg-accent/90">
           <Plus size={16} strokeWidth={2.5} /> Log a Trade
         </Link>
+        <HideButton className="mb-6 mt-2 w-full" />
         <nav className="flex flex-col gap-1">
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink
@@ -62,6 +64,7 @@ export function Layout() {
         <header className="flex items-center justify-between border-b border-border-strong bg-surface-1 px-4 py-3 md:hidden">
           <Brand compact />
           <div className="flex items-center gap-2">
+            <HideButton compact />
             {passcodeOn && (
               <button onClick={lockNow} className="rounded-lg p-2 text-text-muted hover:bg-surface-2" aria-label="Lock now">
                 <Lock size={18} />
@@ -92,6 +95,31 @@ export function Layout() {
         ))}
       </nav>
     </div>
+  );
+}
+
+/** One switch for the whole app: hides every dollar amount, price, size and percent (colors stay). */
+function HideButton({ compact, className }: { compact?: boolean; className?: string }) {
+  const { hidden, toggle } = useHide();
+  const Icon = hidden ? Eye : EyeOff;
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-pressed={hidden}
+      title={hidden ? "Show my numbers" : "Hide my numbers (for screen sharing)"}
+      className={cn(
+        "flex items-center justify-center gap-1.5 rounded-lg border text-sm font-medium transition-colors",
+        compact ? "px-2.5 py-2 text-xs" : "px-3 py-2",
+        hidden
+          ? "border-warn/40 bg-warn/15 text-warn-text hover:bg-warn/25"
+          : "border-border-strong text-text-secondary hover:bg-surface-2 hover:text-text-primary",
+        className
+      )}
+    >
+      <Icon size={compact ? 15 : 16} />
+      {compact ? (hidden ? "Show" : "Hide") : hidden ? "Numbers hidden · Show" : "Hide numbers"}
+    </button>
   );
 }
 

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { Pencil, Trash2, ArrowLeft } from "lucide-react";
 import { useJournal, useImageUrl } from "../lib/journal";
 import { summarize, contractLabel, sideLabel, ASSET_LABEL, QTY_UNIT } from "../lib/calc";
-import { dateLabel, holdLabel, money, price, qty } from "../lib/format";
+import { dateLabel, holdLabel, money, price, qty, num } from "../lib/format";
 import { Badge, Button, Card, Modal, PageHeader, Pnl } from "../components/ui";
 import type { Fill } from "../lib/types";
 
@@ -37,13 +37,13 @@ export function TradeDetail() {
   }
   if (t.assetClass === "FUTURE" && t.future) {
     facts.push(["Dollars per point", money(t.future.pointValue)]);
-    if (s.pointsPerUnit !== null) facts.push(["Points", `${s.pointsPerUnit > 0 ? "+" : ""}${Math.round(s.pointsPerUnit * 10000) / 10000}`]);
-    if (s.ticks !== null) facts.push(["Ticks", String(s.ticks)]);
+    if (s.pointsPerUnit !== null) facts.push(["Points", num(`${s.pointsPerUnit > 0 ? "+" : ""}${Math.round(s.pointsPerUnit * 10000) / 10000}`)]);
+    if (s.ticks !== null) facts.push(["Ticks", num(String(s.ticks))]);
   }
-  if (s.returnPct !== null) facts.push(["Return", `${s.returnPct > 0 ? "+" : ""}${s.returnPct}%`]);
+  if (s.returnPct !== null) facts.push(["Return", num(`${s.returnPct > 0 ? "+" : ""}${s.returnPct}%`)]);
   if (t.stopLoss !== null) facts.push(["Stop loss", price(t.stopLoss)]);
   if (t.target !== null) facts.push(["Target", price(t.target)]);
-  if (s.rMultiple !== null) facts.push(["R-multiple", `${s.rMultiple}R`]);
+  if (s.rMultiple !== null) facts.push(["R-multiple", num(`${s.rMultiple}R`)]);
   if (t.strategy) facts.push(["Strategy", t.strategy]);
   if (t.account) facts.push(["Account", t.account]);
   if (t.grade) facts.push(["Your grade", t.grade]);

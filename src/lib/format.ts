@@ -4,12 +4,36 @@ import { parseLocal } from "./calc";
 
 export const cn = (...c: ClassValue[]) => twMerge(clsx(c));
 
+// "Hide numbers" (for screen-sharing / training): every dollar amount, price, size and percent
+// shows as dots. Colors stay, so green/red still tell wins from losses. Remembered on this browser.
+const MASK = "•••";
+let hidden = (() => {
+  try {
+    return localStorage.getItem("hideNumbers") === "1";
+  } catch {
+    return false;
+  }
+})();
+export const numbersHidden = () => hidden;
+export function setNumbersHidden(v: boolean) {
+  hidden = v;
+  try {
+    localStorage.setItem("hideNumbers", v ? "1" : "0");
+  } catch {
+    /* private mode: still works for this visit */
+  }
+}
+/** Wrap any custom number text (percent, R, points…) so it hides too. */
+export const num = (text: string) => (hidden ? MASK : text);
+
 export function money(v: number): string {
+  if (hidden) return `${v < 0 ? "-" : ""}$${MASK}`;
   const sign = v < 0 ? "-" : "";
   return `${sign}$${Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function signedMoney(v: number): string {
+  if (hidden) return `${v > 0 ? "+" : v < 0 ? "-" : ""}$${MASK}`;
   const sign = v > 0 ? "+" : v < 0 ? "-" : "";
   return `${sign}$${Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -17,10 +41,12 @@ export function signedMoney(v: number): string {
 /** Prices: keep up to 6 decimals (futures/currencies), but at least 2. */
 export function price(v: number | null): string {
   if (v === null) return "—";
+  if (hidden) return MASK;
   return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 });
 }
 
 export function qty(v: number): string {
+  if (hidden) return MASK;
   return v.toLocaleString("en-US", { maximumFractionDigits: 6 });
 }
 

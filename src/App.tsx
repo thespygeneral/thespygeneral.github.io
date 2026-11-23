@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router";
+import { HideContext } from "./lib/hide";
+import { numbersHidden, setNumbersHidden } from "./lib/format";
 import { Loader2 } from "lucide-react";
 import { JournalProvider, useJournal } from "./lib/journal";
 import { Layout } from "./components/Layout";
@@ -40,11 +43,19 @@ function Gate() {
 }
 
 export default function App() {
+  // Held at the very top so flipping it redraws every screen (forms keep what's typed).
+  const [hidden, setHidden] = useState(numbersHidden());
+  const toggle = () => {
+    setNumbersHidden(!hidden);
+    setHidden(!hidden);
+  };
   return (
     <HashRouter>
-      <JournalProvider>
-        <Gate />
-      </JournalProvider>
+      <HideContext.Provider value={{ hidden, toggle }}>
+        <JournalProvider>
+          <Gate />
+        </JournalProvider>
+      </HideContext.Provider>
     </HashRouter>
   );
 }

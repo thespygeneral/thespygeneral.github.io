@@ -1,10 +1,10 @@
 import { AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie } from "recharts";
 import type { Bucket, EquityPoint } from "../lib/calc";
-import { money, signedMoney } from "../lib/format";
+import { money, signedMoney, num, numbersHidden } from "../lib/format";
 import { parseLocal } from "../lib/calc";
 
 const axis = { fill: "var(--text-muted)", fontSize: 11 };
-const short = (v: number) => (Math.abs(v) >= 1000 ? `${v < 0 ? "-" : ""}$${(Math.abs(v) / 1000).toFixed(Math.abs(v) >= 10000 ? 0 : 1)}k` : money(v).replace(".00", ""));
+const short = (v: number) => numbersHidden() ? "" : (Math.abs(v) >= 1000 ? `${v < 0 ? "-" : ""}$${(Math.abs(v) / 1000).toFixed(Math.abs(v) >= 10000 ? 0 : 1)}k` : money(v).replace(".00", ""));
 
 function Tip({ active, label, payload, labelFmt }: { active?: boolean; label?: string; payload?: { value: number; payload: Record<string, number> }[]; labelFmt?: (l: string) => string }) {
   if (!active || !payload?.length) return null;
@@ -29,7 +29,7 @@ export function EquityChart({ data }: { data: EquityPoint[] }) {
   const last = data[data.length - 1].cumPnl;
   const color = last >= 0 ? "var(--good)" : "var(--critical)";
   return (
-    <ResponsiveContainer width="100%" height={260}>
+    <ResponsiveContainer key={String(numbersHidden())} width="100%" height={260}>
       <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="eq" x1="0" y1="0" x2="0" y2="1">
@@ -50,7 +50,7 @@ export function EquityChart({ data }: { data: EquityPoint[] }) {
 export function BucketChart({ data, height = 220 }: { data: Bucket[]; height?: number }) {
   if (!data.length) return <Empty h={height} text="No closed trades yet." />;
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer key={String(numbersHidden())} width="100%" height={height}>
       <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--border-strong)" vertical={false} />
         <XAxis dataKey="key" tick={axis} tickLine={false} axisLine={{ stroke: "var(--border-strong)" }} interval={0} />
@@ -83,7 +83,7 @@ export function WinDonut({ wins, losses, breakeven }: { wins: number; losses: nu
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-semibold tabular-nums">{((wins / total) * 100).toFixed(0)}%</span>
+          <span className="text-2xl font-semibold tabular-nums">{num(`${((wins / total) * 100).toFixed(0)}%`)}</span>
           <span className="text-xs text-text-muted">wins</span>
         </div>
       </div>

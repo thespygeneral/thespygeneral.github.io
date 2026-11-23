@@ -4,8 +4,8 @@ import { Plus, FileSpreadsheet, Loader2, ChevronLeft, ChevronRight, NotebookPen 
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, format, addMonths } from "date-fns";
 import { useJournal } from "../lib/journal";
 import { computeStats, equityCurve, pnlByAsset, pnlBySymbol, pnlByStrategy, pnlByWeekday, pnlByTag, dailyPnl, type TradeRow } from "../lib/calc";
-import { cn, money, signedMoney } from "../lib/format";
-import { Button, Card, Empty, PageHeader, StatCard } from "../components/ui";
+import { cn, money, signedMoney, num, todayLocal } from "../lib/format";
+import { Button, Card, Empty, PageHeader, Pnl, StatCard } from "../components/ui";
 import { EquityChart, BucketChart, WinDonut } from "../components/Charts";
 import { TradesTable } from "../components/TradesTable";
 import { FilterBar, useFilters } from "../components/Filters";
@@ -44,28 +44,65 @@ export function ExcelButton({ rows, label = "Export to Excel" }: { rows: TradeRo
   );
 }
 
+/** Today at a glance — always today, whatever date filter is picked below. */
+function TodayCard({ rows }: { rows: TradeRow[] }) {
+  const today = todayLocal();
+  const taken = rows.filter((r) => r.trade.entries.some((f) => f.date.slice(0, 10) === today));
+  const stillOpen = taken.filter((r) => r.s.status === "OPEN").length;
+  const closed = dailyPnl(rows).get(today);
+  const label = new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  return (
+    <Link
+      to={`/trades?from=${today}&to=${today}`}
+      className="flex flex-col gap-4 rounded-xl border border-accent/30 bg-accent/5 px-4 py-4 transition-colors hover:bg-accent/10 sm:flex-row sm:items-center sm:justify-between md:px-5"
+    >
+      <div>
+        <div className="text-xs font-medium uppercase tracking-wide text-accent">Today · {label}</div>
+        <div className="mt-1 text-2xl font-semibold">
+          {taken.length} trade{taken.length === 1 ? "" : "s"} taken
+        </div>
+      </div>
+      <div className="flex gap-8 text-sm">
+        <div>
+          <div className="text-xs text-text-muted">Closed today</div>
+          <div className="mt-0.5 font-semibold">{closed?.trades ?? 0}</div>
+        </div>
+        <div>
+          <div className="text-xs text-text-muted">Still open</div>
+          <div className="mt-0.5 font-semibold">{stillOpen}</div>
+        </div>
+        <div>
+          <div className="text-xs text-text-muted">Today's P&L</div>
+          <div className="mt-0.5"><Pnl value={closed ? closed.pnl : null} /></div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export function Dashboard() {
   const { rows } = useJournal();
   const filters = useFilters();
   if (!rows.length) return (<><PageHeader title="Dashboard" /><NoTradesYet /></>);
   const list = filters.apply(rows);
   const st = computeStats(list);
-  const pf = st.profitFactor === null ? "—" : st.profitFactor === Infinity ? "No losses" : st.profitFactor.toFixed(2);
+  const pf = st.profitFactor === null ? "—" : st.profitFactor === Infinity ? "No losses" : num(st.profitFactor.toFixed(2));
   const types = new Set(list.map((r) => r.trade.assetClass));
 
   return (
     <>
       <PageHeader title="Dashboard" sub="How your trading is going." action={<ExcelButton rows={list} />} />
       <div className="space-y-5 px-4 py-5 md:px-8">
+        <TodayCard rows={rows} />
         <FilterBar filters={filters} />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <StatCard label="Net P&L" value={signedMoney(st.totalPnl)} tone={st.totalPnl > 0 ? "good" : st.totalPnl < 0 ? "bad" : undefined} sub={`${st.closed} closed · ${st.open} open`} />
-          <StatCard label="Win rate" value={`${st.winRate.toFixed(1)}%`} sub={`${st.wins} wins · ${st.losses} losses`} />
+          <StatCard label="Win rate" value={num(`${st.winRate.toFixed(1)}%`)} sub={`${st.wins} wins · ${st.losses} losses`} />
           <StatCard label="Avg win / Avg loss" value={money(st.avgWin)} sub={`${money(-st.avgLoss)} avg loss`} />
           <StatCard label="Profit factor" value={pf} sub="Money won ÷ money lost" />
           <StatCard label="Avg per trade" value={signedMoney(st.expectancy)} tone={st.expectancy > 0 ? "good" : st.expectancy < 0 ? "bad" : undefined} />
           <StatCard label="Best / Worst" value={signedMoney(st.best)} sub={`${signedMoney(st.worst)} worst`} />
-          <StatCard label="Avg R-multiple" value={st.avgR === null ? "—" : `${st.avgR}R`} sub={st.avgR === null ? "Add a stop loss to see this" : "Result ÷ planned risk"} />
+          <StatCard label="Avg R-multiple" value={st.avgR === null ? "—" : num(`${st.avgR}R`)} sub={st.avgR === null ? "Add a stop loss to see this" : "Result ÷ planned risk"} />
           <StatCard
             label="Current streak"
             value={st.streak.type === "none" ? "—" : `${st.streak.count} ${st.streak.type === "win" ? "win" : "loss"}${st.streak.count > 1 ? (st.streak.type === "win" ? "s" : "es") : ""}`}
